@@ -1,0 +1,140 @@
+<html lang="en-US">
+<head>
+    <title>Send xAPI Statements from Html</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="bootstrap.min.css" rel="stylesheet" type="text/css" />
+    <link href="bootstrap-theme.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="bootstrap.min.js"></script>
+    <script src="xapiwrapper.min.js"></script>
+    <script src="moment.min.js"></script>
+    <script>
+        function SendStatement() {
+            // Set the authorization and endpoint
+            SetAuthorization();
+
+            // Build the statement based on values in the UI.
+            let statement =
+            {
+                "version": "1.0.3",
+                "actor": {
+                    "objectType": "Agent",
+                    "name": "Werkenthin, Art",
+                    "mbox": "mailto:Artw@example.com"
+                },
+                "verb": {
+                    "id": "https://w3id.org/xapi/adl/verbs/abandoned",
+                    "display": {
+                        "en-US": "abandoned"
+                    }
+                },
+                "object": {
+                    "objectType": "Activity",
+                    "id": "http://adlnet.gov/expapi/activities/example",
+                    "definition": {
+                        "name": {
+                            "en-US": "Example Activity"
+                        },
+                        "description": {
+                            "en-US": "Example activity description"
+                        },
+                        "type": "http://www.example.co.uk/types/exampleactivitytype"
+                    }
+                },
+                "authority": {
+                    "objectType": "Agent",
+                    "account": {
+                        "homePage": "https://www2.virtualtrainingassistant.com/demo/",
+                        "name": "XAPI_Demo"
+                    }
+                }
+            }
+
+            // Set statement timestamp
+            statement["timestamp"] = moment().format();
+
+            ADL.XAPIWrapper.sendStatement(statement, StatementResult);
+        }
+
+        function StatementResult(r, obj) {
+            // This is the callback function for
+            // ADL.XAPIWrapper.sendStatement()
+            if (r.status === 200) {
+                alert("Statement sent");
+            } else {
+                alert("Returned " + r.status);
+            }
+        }
+
+        function SetAuthorization() {
+            // Get LRS credentials from user interface
+            let endpoint = $("#endpoint").val();
+            let user = $("#username").val();
+            let password = $("#password").val();
+
+            // Create an JSON object to pass to changeConfig()
+            let authConfig = {
+                "endpoint": endpoint,
+                "auth": "Basic " + toBase64(user + ":" + password),
+            };
+
+            // Call function in the xAPIWrapper library to set the lrs configuration
+            ADL.XAPIWrapper.changeConfig(authConfig);
+        }
+    </script>
+
+</head>
+<body onload="Initialize();">
+    <div class="container" style="margin-top:12px;">
+        <div class="panel panel-primary">
+            <div class="panel-heading">
+                <div class="row">
+                    <div class="col-md-4">
+                        <h3 class="panel-title">Hard Coded Example</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="panel-body">
+                <div class="row">
+                    <div class="col-md-12">
+                        <button id="btnSubmit" type="button" class="btn btn-default" onclick="SendStatement();">Send</button>&nbsp;
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="panel panel-primary">
+            <div class="panel-heading collapser">
+                <h4 class="panel-title"><a data-toggle="collapse" data-target="#auth" href="#auth" class="collapsed">LRS Basic Auth Setup</a></h4>
+            </div>
+            <div id="auth" class="panel-collapse collapse">
+                <div class="panel-body">
+                    <div class="row">
+                        <form id="endpoint-values">
+                            <div class="form-group col-md-4">
+                                <label class="control-label" for="endpoint">Endpoint</label>
+                                <div class="input-group">
+                                    <input type="url" class="form-control" value="https://www2.virtualtrainingassistant.com/demo/ScormEngineInterface/Demo/TCAPI/" aria-describedby="LRS Endpoint" id="endpoint" required />
+                                </div>
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label class="control-label" for="username">Username</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" value="Your LRS ID" aria-describedby="Username" id="username" required />
+                                </div>
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label class="control-label" for="password">Password</label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" value="Your LRS Password" aria-describedby="Password" id="password" required />
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>

@@ -1,0 +1,318 @@
+<html lang="en-US">
+<head>
+    <title>Send xAPI Statements from Html</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="bootstrap.min.css" rel="stylesheet" type="text/css" />
+    <link href="bootstrap-theme.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="bootstrap.min.js"></script>
+    <script src="xapiwrapper.min.js"></script>
+    <script src="moment.min.js"></script>
+    <script>
+        function Initialize() {
+			LoadVerbs();
+		}
+		
+		function LoadVerbs() {
+			// The ADL xapiwrapper library includes verbs.  The following code 
+			// loops through the verbs and loads them into an HTML "select" box.
+			let verbList = document.getElementById("slVerbs");
+			for (let key in ADL.verbs)
+			{
+				// Create a new "option" for the "select" control
+				let option = document.createElement("option");
+				option.value = ADL.verbs[key]['id'];
+				option.text = ADL.verbs[key]['display']['en-US'];
+
+				// Add the new option to the select control
+				verbList.add(option);
+			}
+        }
+		
+		function SendStatement() {
+			// Set the authorization and endpoint
+			SetAuthorization();
+			
+			// Build the statement based on values in the UI.
+			let statement = CreateStatement();
+			
+			ADL.XAPIWrapper.sendStatement(statement, StatementResult);
+        }
+		
+        function StatementResult(r, obj) {
+            // This is the callback function for 
+            // ADL.XAPIWrapper.sendStatement()
+            if (r.status === 200) {
+				alert("Statement sent");
+            } else {
+				alert("Returned " + r.status);
+            }
+        }
+
+        function getActor() {
+            // Actor properties from UI
+            let actorType = "Agent";
+
+            // Get a form value using javascript only
+            let actorEmail = document.getElementById("actorEmail").value;
+
+            // Get a form value using jQuery.
+            let actorName = $("#actorName").val();
+
+            // Build a JSON object for the actor
+            let actor = {}
+            actor["objectType"] = actorType;
+            actor["mbox"] = "mailto:" + actorEmail;
+            actor['name'] = actorName;
+
+            return actor;
+        }
+
+        function getVerb() {
+            // Verb properties from UI
+            let selectedVerbOption = document.getElementById("slVerbs");
+            let verbID = selectedVerbOption.value;
+            let verbDisplay = selectedVerbOption.options[selectedVerbOption.selectedIndex].text;
+            let verbLanguage = "en-US";
+
+            // Build a JSON object for the verb
+            let verb = {};
+            verb["id"] = verbID;
+            verb["display"] = {};
+            verb['display'][verbLanguage] = verbDisplay;
+
+            return verb;
+        }
+
+        function getObject() {
+            // Object properties from UI
+            let objectActivityID = $("#object-activity-id").val();         
+            let objectActivityName = $("#object-activity-name").val();
+            let objectActivityDescription = $("#object-activity-description").val();
+            let objectActivityLanguage = $("#object-activity-language").val();
+            let objectActivityType = $("#object-activity-type").val();
+
+            // Build a JSON object for the verb
+            let object = {};
+            object['id'] = objectActivityID;
+
+            object['definition'] = {};
+            if (objectActivityName !== "" && objectActivityLanguage !== "") {
+                object['definition']['name'] = {};
+                object['definition']['name'][objectActivityLanguage] = objectActivityName;
+            }
+
+            if (objectActivityDescription !== "" && objectActivityLanguage !== "") {
+                object['definition']['description'] = {};
+                object['definition']['description'][objectActivityLanguage] = objectActivityDescription;
+            }
+
+            if (objectActivityType !== "") {
+                object['definition']['type'] = objectActivityType;
+            }
+
+            return object;
+        }
+
+        function getResult() {
+            // Result properties from the UI
+            let resultScaledScore = $("#result-scaled-score").val();
+            let resultRawScore = $("#result-raw-score").val();
+            let resultMinScore = $("#result-min-score").val();
+            let resultMaxScore = $("#result-max-score").val();
+            let resultSuccess = $("#result-success").val();
+            let resultCompletion = $("#result-completion").val();
+
+            // Build a Result object
+            var result = {};
+            if (resultScaledScore !== "" || resultRawScore !== "" || resultMinScore !== "" || resultMaxScore !== "") {
+                result['score'] = {};
+                if (resultScaledScore !== "") { result['score']['scaled'] = parseFloat(resultScaledScore); }
+                if (resultRawScore !== "") { result['score']['raw'] = parseInt(resultRawScore); }
+                if (resultMinScore !== "") { result['score']['min'] = parseInt(resultMinScore); }
+                if (resultMaxScore !== "") { result['score']['max'] = parseInt(resultMaxScore); }
+            }
+            if (resultSuccess !== "") { result['success'] = (resultSuccess === 'true'); }
+            if (resultCompletion !== "") { result['completion'] = (resultCompletion === 'true'); }
+        }
+		
+		function CreateStatement() {
+			// Begin creating a JSON object for the statement
+			let statement = {};
+			statement["timestamp"] = moment().format();
+			statement["version"] = "1.0.3"
+            
+            // Add actor to the statement
+            statement["actor"] = getActor();
+			
+			// Add verb to the statement
+            statement["verb"] = getVerb();
+			
+			// Add object to the statement
+            statement["object"] = getObject();
+			
+			// Add result to the statement
+			statement["result"] = getResult();
+			
+			return statement;
+        }
+
+		function SetAuthorization() {
+			// Get LRS credentials from user interface
+			let endpoint = $("#endpoint").val();
+			let user = $("#username").val();
+			let password = $("#password").val();
+
+			// Create an JSON object to pass to changeConfig()
+			let authConfig = {
+				"endpoint" : endpoint,
+				"auth" : "Basic " + toBase64(user + ":" + password),
+			};
+			
+			// Call function in the xAPIWrapper library to set the lrs configuration
+			ADL.XAPIWrapper.changeConfig(authConfig);
+		}
+    </script>
+    
+</head>
+<body onload="Initialize();">
+    <div class="container" style="margin-top:12px;">
+        <div class="panel panel-primary">
+            <div class="panel-heading">
+                <div class="row">
+                    <div class="col-md-4">
+                        <h3 class="panel-title">Select Options</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="panel-body">
+                <div class="row">
+                    <div class="col-md-12"><h2>Actor</h2></div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="control-label" for="actorEmail">Email</label>
+                            <input id="actorEmail" type="email" class="form-control" value="artw@risc-inc.com" aria-describedby="Actor Email"/>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="control-label" for="actorName">Name (Optional)</label>
+                            <input id="actorName" type="text" class="form-control" value="Werkenthin, Art" aria-describedby="Actor Name"/>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12"><h2>Verb</h2></div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label class="control-label" for="slVerbs">Select Verb</label>
+                            <select id="slVerbs" class="form-control" title="List of Verbs"></select>
+                        </div>                            
+                    </div>
+                    <div class="col-md-6"></div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12"><h2>Object (Activity)</h2></div>
+                    <div class="form-group col-md-12">
+                        <label class="control-label" for="object-activity-id">Activity ID</label>
+                        <input type="text" class="form-control" value="http://adlnet.gov/expapi/activities/example" aria-describedby="Object Activity ID" id="object-activity-id" required />
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="form-group col-md-5">
+                        <label class="control-label" for="object-activity-name">Name</label>
+                        <input type="text" class="form-control" value="Example Activity" aria-describedby="Object Acitivity Name" id="object-activity-name" />
+                    </div>
+                    <div class="form-group col-md-5">
+                        <label class="control-label" for="object-activity-description">Description</label>
+                        <input type="text" class="form-control" value="Example activity description" aria-describedby="Object Activity Description" id="object-activity-description" />
+                    </div>
+                    <div class="form-group col-md-2">
+                        <label class="control-label" for="object-activity-language">Language</label>
+                        <input type="text" class="form-control" value="en-US" aria-describedby="Object Activity Language" id="object-activity-language" />
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="form-group col-md-6">
+                        <label class="control-label" for="object-activity-type">Activity Type</label>
+                        <input type="text" class="form-control" value="http://www.example.co.uk/types/exampleactivitytype" aria-describedby="Object Activity Type" id="object-activity-type" />
+                    </div>
+                 </div>
+                <div class="row">
+                    <div class="col-md-12"><h2>Result</h2></div>
+                    <div class="form-group col-md-2">
+                        <label class="control-label" for="result-scaled-score">Scaled Score</label>
+                        <!-- arbitrary number of decimal places due to html5 number input limitions -->
+                        <input type="number" min="-1" max="1" step="0.00001" pattern="^[0-9]*(.)?[0-9]+$" class="form-control" placeholder="0" aria-describedby="Scaled Score" id="result-scaled-score" />
+                    </div>
+                    <div class="form-group col-md-2">
+                        <label class="control-label" for="result-raw-score">Raw Score</label>
+                        <input type="number" class="form-control" placeholder="80" aria-describedby="Raw Score" id="result-raw-score" />
+                    </div>
+                    <div class="form-group col-md-2">
+                        <label class="control-label" for="result-min-score">Minimum Score</label>
+                        <input type="number" class="form-control" placeholder="0" aria-describedby="Minimum Score" id="result-min-score" />
+                    </div>
+                    <div class="form-group col-md-2">
+                        <label class="control-label" for="result-max-score">Maximum Score</label>
+                        <input type="number" class="form-control" placeholder="100" aria-describedby="Maximum Score" id="result-max-score" />
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="form-group col-md-2">
+                        <label class="control-label" for="result-success">Success</label>
+                        <select class="form-control" name="result-success" id="result-success">
+                            <option></option>
+                            <option>true</option>
+                            <option>false</option>
+                        </select>
+                    </div>
+                    <div class="form-group col-md-2">
+                        <label class="control-label" for="result-completion">Completion</label>
+                        <select class="form-control" name="result-completion" id="result-completion">
+                            <option></option>
+                            <option>true</option>
+                            <option>false</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="panel panel-primary">
+                    <div class="panel-heading collapser">
+                        <h4 class="panel-title"><a data-toggle="collapse" data-target="#auth" href="#auth" class="collapsed">LRS Basic Auth Setup</a></h4>
+                    </div>
+                    <div id="auth" class="panel-collapse collapse">
+                        <div class="panel-body">
+                            <div class="row">
+                                <form id="endpoint-values">
+                                    <div class="form-group col-md-4">
+                                        <label class="control-label" for="endpoint">Endpoint</label>
+                                        <div class="input-group">
+                                            <input type="url" class="form-control" value="https://www2.virtualtrainingassistant.com/demo/ScormEngineInterface/Demo/TCAPI/" aria-describedby="LRS Endpoint" id="endpoint" required />
+                                        </div>
+                                    </div>
+                                    <div class="form-group col-md-4">
+                                        <label class="control-label" for="username">Username</label>
+                                        <div class="input-group">
+                                            <input type="text" class="form-control" value="Your LRS ID" aria-describedby="Username" id="username" required />
+                                        </div>
+                                    </div>
+                                    <div class="form-group col-md-4">
+                                        <label class="control-label" for="password">Password</label>
+                                        <div class="input-group">
+                                            <input type="password" class="form-control" value="Your LRS Password" aria-describedby="Password" id="password" required />
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-12">
+                    <button id="btnSubmit" type="button" class="btn btn-default" onclick="SendStatement();">Send</button>&nbsp;
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
